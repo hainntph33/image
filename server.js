@@ -13,6 +13,11 @@ app.use(cors());
 app.use(bodyParser.json({limit: '50mb'}));
 app.use(bodyParser.urlencoded({limit: '50mb', extended: true}));
 
+// Kiểm tra kết nối
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', message: 'Server đang hoạt động' });
+});
+
 // Trang chủ đơn giản với form để test
 app.get('/', (req, res) => {
     res.send(`
@@ -41,7 +46,7 @@ app.get('/', (req, res) => {
         
         <div class="endpoint">
             <textarea id="base64Input" placeholder="Nhập chuỗi base64 vào đây"></textarea>
-            <button onclick="processBase64()">Gửi đến API</button>
+            <button id="submitBtn" onclick="processBase64()">Gửi đến API</button>
             <div id="loading" class="loading">
                 <p>Đang xử lý...</p>
                 <div class="loader"></div>
@@ -51,42 +56,54 @@ app.get('/', (req, res) => {
         <div id="result"></div>
         
         <script>
-            function processBase64() {
-                const base64 = document.getElementById('base64Input').value.trim();
-                if (!base64) {
-                    alert('Vui lòng nhập chuỗi base64');
-                    return;
-                }
-                
-                // Hiển thị loading
-                const loading = document.getElementById('loading');
-                loading.style.display = 'block';
-                
-                // Tạo FormData
-                const formData = new FormData();
-                formData.append('image_base64', `data:image/webp;base64,${base64}`);
-                
-                // Gửi trực tiếp đến API đích
-                fetch('https://api-4-3y29.onrender.com/process_base64', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
+            async function processBase64() {
+                try {
+                    const base64 = document.getElementById('base64Input').value.trim();
+                    if (!base64) {
+                        alert('Vui lòng nhập chuỗi base64');
+                        return;
+                    }
+                    
+                    // Vô hiệu hóa nút khi đang xử lý
+                    const submitBtn = document.getElementById('submitBtn');
+                    submitBtn.disabled = true;
+                    
+                    // Hiển thị loading
+                    const loading = document.getElementById('loading');
+                    loading.style.display = 'block';
+                    
+                    // Tạo FormData
+                    const formData = new FormData();
+                    formData.append('image_base64', \`data:image/webp;base64,\${base64}\`);
+                    
+                    // Gửi trực tiếp đến API đích 
+                    const response = await fetch('https://api-4-3y29.onrender.com/process_base64', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    // Chuyển đổi response
+                    const data = await response.json();
+                    
+                    // Hiển thị kết quả
                     loading.style.display = 'none';
                     document.getElementById('result').innerHTML = 
                         '<h3>Kết quả JSON:</h3>' +
                         '<pre>' + JSON.stringify(data, null, 2) + '</pre>' +
                         '<button onclick="copyToClipboard()">Sao chép JSON</button>';
-                })
-                .catch(error => {
+                }
+                catch (error) {
                     loading.style.display = 'none';
                     document.getElementById('result').innerHTML = 
                         '<div style="color: red;">' +
                         '<h3>Lỗi:</h3>' +
                         '<p>' + error + '</p>' +
                         '</div>';
-                });
+                }
+                finally {
+                    // Kích hoạt lại nút
+                    document.getElementById('submitBtn').disabled = false;
+                }
             }
             
             function copyToClipboard() {
@@ -105,7 +122,7 @@ app.get('/', (req, res) => {
     `);
 });
 
-// Endpoint để xử lý base64 và gửi đến API đích (giữ lại để tương thích ngược)
+// Endpoint để xử lý base64 và gửi đến API đích
 app.post('/process-base64', async (req, res) => {
     try {
         // Lấy base64 từ request
@@ -148,7 +165,7 @@ app.post('/process-base64', async (req, res) => {
     }
 });
 
-// Endpoint để tạo JS với base64 (giữ lại để tương thích ngược)
+// Endpoint để tạo JS với base64
 app.post('/generate-code', (req, res) => {
     try {
         // Lấy base64 từ request
@@ -162,12 +179,12 @@ app.post('/generate-code', (req, res) => {
         }
         
         // Tạo nội dung JS
-        const jsCode = `// Chuỗi base64 dài hơn
-const longBase64 ="${base64String}"
+        const jsCode = `// Chuỗi base64
+const imageBase64 = "${base64String}";
 
 // Tạo FormData
 const formData = new FormData();
-formData.append('image_base64', \`data:image/webp;base64,\${longBase64}\`);
+formData.append('image_base64', \`data:image/webp;base64,\${imageBase64}\`);
 
 // Gửi request đến API
 fetch('https://api-4-3y29.onrender.com/process_base64', {
