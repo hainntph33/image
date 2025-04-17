@@ -28,7 +28,7 @@ app.post('/process-base64', async (req, res) => {
         
         // Tạo FormData để gửi đến API đích
         const formData = new FormData();
-        formData.append('image_base64', `data:image/webp;base64,    {base64String}`);
+        formData.append('image_base64', `data:image/webp;base64,${base64String}`);
         
         // Gửi request đến API đích
         const response = await axios.post('https://api-4-3y29.onrender.com/process_base64', 
